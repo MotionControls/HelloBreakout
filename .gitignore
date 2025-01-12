@@ -1,0 +1,20 @@
+# Ignore thirdparty tools.
+/thirdparty/
+
+# Ignore all non-tim texture files.
+*.png
+
+# Ignore all non-xa music files.
+*.mp3
+*.wav
+
+# Ignore CD files.
+*.bin
+*.cue
+
+# Ignore compilation files.
+*.o
+*.ps-exe
+*.elf
+*.map
+*.dep
