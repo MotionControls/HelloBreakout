@@ -1,6 +1,7 @@
 // Res:
-// 	http://lameguy64.net/svn/pstutorials/chapter1/1-display.html
-//	https://github.com/ABelliqueux/nolibgs_hello_worlds/wiki/XA
+// 	Old PSX dev tutorials. ; http://lameguy64.net/svn/pstutorials/chapter1/1-display.html
+//	nolibgs xa docs ; https://github.com/ABelliqueux/nolibgs_hello_worlds/wiki/XA
+//	Archerite's tile drawing code ; https://discord.com/channels/642647820683444236/642849069378568192/1128603597546995744
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -9,6 +10,10 @@
 #include <libgpu.h>
 #include <libcd.h>
 #include <libspu.h>
+
+#include "types.h"
+
+extern 
 
 #define VMODE		0	// Video Mode ; 0: NTSC, 1: PAL
 #define SCREENXRES	320	// Screen width
@@ -35,6 +40,27 @@ char primbuff[2][32768];		// Double primitive buffer.
 char* nextpri = primbuff[0];	// Pointer to the next primitive in primbuff.
 
 short db = 0;	// Which buffer to use.
+
+// BALLs
+#define BALL_MAX		32
+#define BALL_DRAW_LAYER	1
+
+typedef struct{
+	Vec4i rect;
+	Vec2f speed;
+	u_char r,g,b;
+	char active;
+}OBJ_BALL;
+OBJ_BALL ballArr[BALL_MAX];			// BALLSs to draw.
+
+// PADDLE
+#define PADDLE_DRAW_LAYER 2
+
+typedef struct{
+	Vec4i rect;
+	u_char r,g,b;
+}OBJ_PADDLE;
+OBJ_PADDLE paddle;
 
 #define XA_SECTOR_OFFSET	4	// Unsure what this is.
 								// 4: simple speed, 8: double speed.
@@ -101,6 +127,38 @@ void init(void){
 	SpuInit();
 }
 
+void DrawLevel(){}	// TODO
+
+void StepBalls(){
+	for(int i = 0; i < BALL_MAX; i++){
+		if(ballArr[i].active == 1){
+			// Draw ball.
+			TILE* tile = (TILE*) nextpri;
+			setTile(tile);
+			setXY0(tile, ballArr[i].rect.x - ballArr[i].rect.w/2, ballArr[i].rect.y - ballArr[i].rect.h/2);
+			setWH(tile, ballArr[i].rect.w, ballArr[i].rect.h);
+			setRGB0(tile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
+			addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tile);
+			nextpri += sizeof(TILE);
+		}
+	}
+}
+
+void StepPaddle(int pad){
+	// Process PADDLE.
+	if(pad & PADLleft)	paddle->rect.x--;
+	if(pad & PADLright) paddle->rect.x++;
+	
+	// Draw PADDLE.
+	TILE* tile = (TILE*) nextpri;
+	setTile(tile);
+	setXY0(tile, paddle->rect.x - paddle->rect.w/2, paddle->rect.y - paddle->rect.h/2);
+	setWH(tile, paddle->rect.w, paddle->rect.h);
+	setRGB0(tile, paddle->r, paddle->g, paddle->b);
+	addPrim(ot[db][OTLEN - PADDLE_DRAW_LAYER], tile);
+	nextpri += sizeof(TILE);
+}
+
 void display(void){
     DrawSync(0);                    // Wait for all drawing to terminate
     VSync(0);                       // Wait for the next vertical blank
@@ -157,14 +215,22 @@ int main(void){
 	CdlLOC loc;
 	xaCurPos = xaStartPos;
 	
-	// Init TILEs.
-	TILE* blueTile;
-	TILE* pinkTile;
-	TILE* redTile;
-	
 	// Init gamepad.
 	int pad = 0;
 	PadInit(0);
+	
+	// Init BALLs.
+	ballArr[0] = (OBJ_BALL){
+		(Vec4i){SCREENXRES/2, SCREENYRES/2, 8, 8},
+		255,255,0,
+		1
+	};
+	
+	// Init PADDLE.
+	paddle = (OBJ_PADDLE){
+		(Vec4i){SCREENXRES/2, SCREENYRES-32, 64, 8},
+		255, 0, 255
+	};
 	
     while (1){
         // Clear reversed ordering table.
@@ -172,35 +238,12 @@ int main(void){
 		
 		// Poll gamepad.
 		pad = PadRead(0);
+	
+		// Step OBJs.
+		StepBalls();
+		StepPaddle(pad);
 		
-		// Draw TILEs.
-		blueTile = (TILE*) nextpri;				// Set blueTile to point towards the "empty" space in the primitive buffer.
-		setTile(blueTile);						// Init blueTile as a TILE. Not sure what's going on behind the scenes here.
-		setXY0(blueTile, 0, 0);
-		setWH(blueTile, 32, 32);
-		setRGB0(blueTile, 0, 0, 255);
-		addPrim(ot[db][OTLEN - 1], blueTile);	// Add blueTile to the ot.
-		nextpri += sizeof(TILE);				// Point nextpri towards the next available space in the primitive buffer.
-		
-		pinkTile = (TILE*) nextpri;
-		setTile(pinkTile);
-		setXY0(pinkTile, 16, 16);
-		setWH(pinkTile, 64, 64);
-		setRGB0(pinkTile, 255, 32, 255);
-		addPrim(ot[db][OTLEN - 2], pinkTile);	// Add pinkTile to the ot. The higher index is drawn after (in front of) the lower index.
-		nextpri += sizeof(TILE);
-		
-		redTile = (TILE*) nextpri;
-		setTile(redTile);
-		setXY0(redTile, 64, 64);
-		setWH(redTile, 32, 32);
-		setRGB0(redTile, 255, 0, 0);
-		addPrim(ot[db][OTLEN - 1], redTile);
-		nextpri += sizeof(TILE);
-		
-		FntPrint("...aaaand we're live.");
-        FntFlush(-1);	// Draw print stream, clear print buffer.
-        
+		FntFlush(-1);	// Draw print stream, clear print buffer.
 		display();
     }
 	
