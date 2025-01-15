@@ -1,5 +1,5 @@
 // Res:
-// 	Old PSX dev tutorials. ; http://lameguy64.net/svn/pstutorials/chapter1/1-display.html
+// 	Old PSX dev tutorials ; http://lameguy64.net/svn/pstutorials/chapter1/1-display.html
 //	nolibgs xa docs ; https://github.com/ABelliqueux/nolibgs_hello_worlds/wiki/XA
 //	Archerite's tile drawing code ; https://discord.com/channels/642647820683444236/642849069378568192/1128603597546995744
 
@@ -12,8 +12,6 @@
 #include <libspu.h>
 
 #include "types.h"
-
-extern 
 
 #define VMODE		0	// Video Mode ; 0: NTSC, 1: PAL
 #define SCREENXRES	320	// Screen width
@@ -47,14 +45,14 @@ short db = 0;	// Which buffer to use.
 
 typedef struct{
 	Vec4i rect;
-	Vec2f speed;
 	u_char r,g,b;
 	char active;
 }OBJ_BALL;
 OBJ_BALL ballArr[BALL_MAX];			// BALLSs to draw.
 
 // PADDLE
-#define PADDLE_DRAW_LAYER 2
+#define PADDLE_DRAW_LAYER	2
+#define PADDLE_SPEED		1
 
 typedef struct{
 	Vec4i rect;
@@ -132,7 +130,10 @@ void DrawLevel(){}	// TODO
 void StepBalls(){
 	for(int i = 0; i < BALL_MAX; i++){
 		if(ballArr[i].active == 1){
-			// Draw ball.
+			// Process BALL.
+			
+			
+			// Draw BALL.
 			TILE* tile = (TILE*) nextpri;
 			setTile(tile);
 			setXY0(tile, ballArr[i].rect.x - ballArr[i].rect.w/2, ballArr[i].rect.y - ballArr[i].rect.h/2);
@@ -146,8 +147,8 @@ void StepBalls(){
 
 void StepPaddle(int pad){
 	// Process PADDLE.
-	if(pad & PADLleft)	paddle->rect.x--;
-	if(pad & PADLright) paddle->rect.x++;
+	if(pad & PADLleft)	paddle->rect.x -= PADDLE_SPEED;
+	if(pad & PADLright) paddle->rect.x += PADDLE_SPEED;
 	
 	// Draw PADDLE.
 	TILE* tile = (TILE*) nextpri;
