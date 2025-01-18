@@ -44,7 +44,11 @@ short db = 0;	// Which buffer to use.
 #define BALL_DRAW_LAYER	1
 
 typedef struct{
-	Vec4i rect;
+	//Vec4i rect;
+	Vec2ufx32 position;		// Fixed-point position.
+	Vec2sfx16 direction;	// Normalized vector.
+	unsigned short speed;	// Fixed-point speed.
+	Vec2i size;
 	u_char r,g,b;
 	char active;
 }OBJ_BALL;
@@ -130,14 +134,39 @@ void DrawLevel(){}	// TODO
 void StepBalls(){
 	for(int i = 0; i < BALL_MAX; i++){
 		if(ballArr[i].active == 1){
-			// Process BALL.
+			// Collision with screen borders.
+			int ballX = ballArr[i].position.x >> 12;
+			int ballY = ballArr[i].position.y >> 12;
 			
+			if(ballX < ballArr[i].size.x/2 || ballX > SCREENXRES - ballArr[i].size.x/2)
+				ballArr[i].direction.x = -ballArr[i].direction.x;
+			if(ballY < ballArr[i].size.y/2 || ballY > SCREENYRES - ballArr[i].size.y/2)
+				ballArr[i].direction.y = -ballArr[i].direction.y;
+			
+			// Collision with paddle.
+			if(ballX > paddle.rect.x - paddle.rect.w/2 && ballX < paddle.rect.x + paddle.rect.w/2 &&
+				ballY > paddle.rect.y - paddle.rect.h/2 && ballY < paddle.rect.y + paddle.rect.h/2){
+				Vec2sfx16 dirToPaddle = (Vec2sfx16){
+					(paddle.rect.x - (paddle.rect.w/2) << 12) - ballArr[i].position.x,
+					(paddle.rect.y - (paddle.rect.h/2) << 12) - ballArr[i].position.y
+				};
+				
+				// TODO:
+				//	Ball direction should be based on how the paddle is currently moving.
+				ballArr[i].direction.x = -ballArr[i].direction.x;
+				ballArr[i].direction.y = -ballArr[i].direction.y;
+			}
+			
+			ballArr[i].position.x += (ballArr[i].direction.x * ballArr[i].speed);
+			ballArr[i].position.y += (ballArr[i].direction.y * ballArr[i].speed);
 			
 			// Draw BALL.
 			TILE* tile = (TILE*) nextpri;
 			setTile(tile);
-			setXY0(tile, ballArr[i].rect.x - ballArr[i].rect.w/2, ballArr[i].rect.y - ballArr[i].rect.h/2);
-			setWH(tile, ballArr[i].rect.w, ballArr[i].rect.h);
+			setXY0(tile,
+				(ballArr[i].position.x >> 12) - ballArr[i].size.x/2,
+				(ballArr[i].position.y >> 12) - ballArr[i].size.y/2);
+			setWH(tile, ballArr[i].size.x, ballArr[i].size.y);
 			setRGB0(tile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
 			addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tile);
 			nextpri += sizeof(TILE);
@@ -147,15 +176,15 @@ void StepBalls(){
 
 void StepPaddle(int pad){
 	// Process PADDLE.
-	if(pad & PADLleft)	paddle->rect.x -= PADDLE_SPEED;
-	if(pad & PADLright) paddle->rect.x += PADDLE_SPEED;
+	if(pad & PADLleft)	paddle.rect.x -= PADDLE_SPEED;
+	if(pad & PADLright) paddle.rect.x += PADDLE_SPEED;
 	
 	// Draw PADDLE.
 	TILE* tile = (TILE*) nextpri;
 	setTile(tile);
-	setXY0(tile, paddle->rect.x - paddle->rect.w/2, paddle->rect.y - paddle->rect.h/2);
-	setWH(tile, paddle->rect.w, paddle->rect.h);
-	setRGB0(tile, paddle->r, paddle->g, paddle->b);
+	setXY0(tile, paddle.rect.x - paddle.rect.w/2, paddle.rect.y - paddle.rect.h/2);
+	setWH(tile, paddle.rect.w, paddle.rect.h);
+	setRGB0(tile, paddle.r, paddle.g, paddle.b);
 	addPrim(ot[db][OTLEN - PADDLE_DRAW_LAYER], tile);
 	nextpri += sizeof(TILE);
 }
@@ -222,7 +251,11 @@ int main(void){
 	
 	// Init BALLs.
 	ballArr[0] = (OBJ_BALL){
-		(Vec4i){SCREENXRES/2, SCREENYRES/2, 8, 8},
+		//(Vec4i){SCREENXRES/2, SCREENYRES/2, 8, 8},
+		(Vec2ufx32){SCREENXRES/2 << 12, SCREENYRES/2 << 12},
+		(Vec2sfx16){(1 << 6) / 2, (1 << 6) / 2},
+		2 << 6,
+		(Vec2i){8, 8},
 		255,255,0,
 		1
 	};
