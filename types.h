@@ -1,6 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+// Vectors
 typedef struct{
 	int x,y;
 }Vec2i;
@@ -20,5 +21,32 @@ typedef struct{			// Ideal for positions.
 	unsigned long x,y;	// 4096 >> 12 = 1
 						// 2048 >> 12 = 0.5
 }Vec2ufx32;
+
+// OBJs
+#define LEVEL_TILESIZE	16
+#define LEVEL_WID		20
+#define LEVEL_HGT		16
+
+typedef struct{
+	int tiles[LEVEL_HGT][LEVEL_WID];
+	TIM_IMAGE timImg;
+	unsigned long* timFile;
+}OBJ_LEVEL;
+
+typedef struct{
+	//Vec4i rect;
+	Vec2ufx32 position;		// Fixed-point position.
+	Vec2sfx16 direction;	// Normalized vector.
+	unsigned short speed;	// Fixed-point speed.
+	Vec2i size;
+	u_char r,g,b;
+	char active;
+}OBJ_BALL;
+
+typedef struct{
+	Vec4i rect;
+	unsigned short speed;	// Fixed-point speed.
+	u_char r,g,b;
+}OBJ_PADDLE;
 
 #endif

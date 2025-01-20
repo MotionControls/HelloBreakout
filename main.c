@@ -12,6 +12,7 @@
 #include <libspu.h>
 
 #include "types.h"
+#include "tims.h"
 
 #define VMODE		0	// Video Mode ; 0: NTSC, 1: PAL
 #define SCREENXRES	320	// Screen width
@@ -42,26 +43,10 @@ short db = 0;	// Which buffer to use.
 // BALLs
 #define BALL_MAX		32
 #define BALL_DRAW_LAYER	1
-
-typedef struct{
-	//Vec4i rect;
-	Vec2ufx32 position;		// Fixed-point position.
-	Vec2sfx16 direction;	// Normalized vector.
-	unsigned short speed;	// Fixed-point speed.
-	Vec2i size;
-	u_char r,g,b;
-	char active;
-}OBJ_BALL;
-OBJ_BALL ballArr[BALL_MAX];			// BALLSs to draw.
+OBJ_BALL ballArr[BALL_MAX];	// BALLSs to draw.
 
 // PADDLE
 #define PADDLE_DRAW_LAYER	2
-#define PADDLE_SPEED		1
-
-typedef struct{
-	Vec4i rect;
-	u_char r,g,b;
-}OBJ_PADDLE;
 OBJ_PADDLE paddle;
 
 #define XA_SECTOR_OFFSET	4	// Unsure what this is.
@@ -92,7 +77,7 @@ void LoadTexture(u_long* tim, TIM_IMAGE* tparam){	// Credit: Lameguy64 ; lameguy
 	LoadImage(tparam->prect, tparam->paddr);	// Load image data into VRAM.
 	DrawSync(0);								// Wait for drawing to end. (Why?)
 	
-	if(tparam->mode & 0x8){	// Check if the TIM uses a CLUT (Color Look-up Table).
+	if(tparam->mode & 0x8){							// Check if the TIM uses a CLUT (Color Look-up Table).
 		LoadImage(tparam->crect, tparam->caddr);	// Load CLUT data into VRAM.
 		DrawSync(0);
 	}
@@ -146,6 +131,7 @@ void StepBalls(){
 			// Collision with paddle.
 			if(ballX > paddle.rect.x - paddle.rect.w/2 && ballX < paddle.rect.x + paddle.rect.w/2 &&
 				ballY > paddle.rect.y - paddle.rect.h/2 && ballY < paddle.rect.y + paddle.rect.h/2){
+				
 				Vec2sfx16 dirToPaddle = (Vec2sfx16){
 					(paddle.rect.x - (paddle.rect.w/2) << 12) - ballArr[i].position.x,
 					(paddle.rect.y - (paddle.rect.h/2) << 12) - ballArr[i].position.y
@@ -153,7 +139,6 @@ void StepBalls(){
 				
 				// TODO:
 				//	Ball direction should be based on how the paddle is currently moving.
-				ballArr[i].direction.x = -ballArr[i].direction.x;
 				ballArr[i].direction.y = -ballArr[i].direction.y;
 			}
 			
@@ -176,8 +161,8 @@ void StepBalls(){
 
 void StepPaddle(int pad){
 	// Process PADDLE.
-	if(pad & PADLleft)	paddle.rect.x -= PADDLE_SPEED;
-	if(pad & PADLright) paddle.rect.x += PADDLE_SPEED;
+	if(pad & PADLleft && paddle.rect.x - paddle.rect.w/2 > 0)			paddle.rect.x -= (paddle.speed >> 6);
+	if(pad & PADLright && paddle.rect.x + paddle.rect.w/2 < SCREENXRES)	paddle.rect.x += (paddle.speed >> 6);
 	
 	// Draw PADDLE.
 	TILE* tile = (TILE*) nextpri;
@@ -251,7 +236,6 @@ int main(void){
 	
 	// Init BALLs.
 	ballArr[0] = (OBJ_BALL){
-		//(Vec4i){SCREENXRES/2, SCREENYRES/2, 8, 8},
 		(Vec2ufx32){SCREENXRES/2 << 12, SCREENYRES/2 << 12},
 		(Vec2sfx16){(1 << 6) / 2, (1 << 6) / 2},
 		2 << 6,
@@ -263,6 +247,7 @@ int main(void){
 	// Init PADDLE.
 	paddle = (OBJ_PADDLE){
 		(Vec4i){SCREENXRES/2, SCREENYRES-32, 64, 8},
+		2 << 6,
 		255, 0, 255
 	};
 	
