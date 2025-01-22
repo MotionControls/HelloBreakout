@@ -34,7 +34,6 @@ typedef struct{
 }OBJ_LEVEL;
 
 typedef struct{
-	//Vec4i rect;
 	Vec2ufx32 position;		// Fixed-point position.
 	Vec2sfx16 direction;	// Normalized vector.
 	unsigned short speed;	// Fixed-point speed.
