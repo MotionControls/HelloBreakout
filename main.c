@@ -46,7 +46,7 @@ short db = 0;	// Which buffer to use.
 OBJ_BALL ballArr[BALL_MAX];	// BALLSs to draw.
 
 // PADDLE
-#define PADDLE_DRAW_LAYER	2
+#define PADDLE_DRAW_LAYER	3
 OBJ_PADDLE paddle;
 
 #define XA_SECTOR_OFFSET	4	// Unsure what this is.
@@ -146,32 +146,63 @@ void StepBalls(){
 			ballArr[i].position.y += (ballArr[i].direction.y * ballArr[i].speed);
 			
 			// Draw BALL.
-			TILE* tile = (TILE*) nextpri;
-			setTile(tile);
+			//TILE* tile = (TILE*) nextpri;
+			//setTile(tile);
+			SPRT* tile = (SPRT*) nextpri;
+			setSprt(tile);
 			setXY0(tile,
 				(ballArr[i].position.x >> 12) - ballArr[i].size.x/2,
 				(ballArr[i].position.y >> 12) - ballArr[i].size.y/2);
 			setWH(tile, ballArr[i].size.x, ballArr[i].size.y);
 			setRGB0(tile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
+			setClut(tile, timBall.crect->x, timBall.crect->y);
+			setUV0(tile, 0, 0);
 			addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tile);
-			nextpri += sizeof(TILE);
+			//nextpri += sizeof(TILE);
+			nextpri += sizeof(SPRT);
 		}
 	}
+	
+	DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
+	setDrawTPage(tileTPage, 0, 1,
+		getTPage(timBall.mode & 0x3, 0,
+			timBall.prect->x, timBall.prect->y));
+	addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tileTPage);
+	nextpri += sizeof(DR_TPAGE);
+	
+	FntPrint("%d, %d\n", timBall.prect->x, timBall.prect->y);
 }
 
 void StepPaddle(int pad){
 	// Process PADDLE.
+	// TODO:
+	//	Transition to using fixed point for position.
+	//	If speed is below 1 then it will add nothing to position.
 	if(pad & PADLleft && paddle.rect.x - paddle.rect.w/2 > 0)			paddle.rect.x -= (paddle.speed >> 6);
 	if(pad & PADLright && paddle.rect.x + paddle.rect.w/2 < SCREENXRES)	paddle.rect.x += (paddle.speed >> 6);
 	
 	// Draw PADDLE.
-	TILE* tile = (TILE*) nextpri;
-	setTile(tile);
+	//TILE* tile = (TILE*) nextpri;
+	//setTile(tile);
+	SPRT* tile = (SPRT*) nextpri;
+	setSprt(tile);
+	setRGB0(tile, paddle.r, paddle.g, paddle.b);
 	setXY0(tile, paddle.rect.x - paddle.rect.w/2, paddle.rect.y - paddle.rect.h/2);
 	setWH(tile, paddle.rect.w, paddle.rect.h);
-	setRGB0(tile, paddle.r, paddle.g, paddle.b);
+	setUV0(tile, 0, 0);
+	setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
 	addPrim(ot[db][OTLEN - PADDLE_DRAW_LAYER], tile);
-	nextpri += sizeof(TILE);
+	//nextpri += sizeof(TILE);
+	nextpri += sizeof(SPRT);
+	
+	DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
+	setDrawTPage(tileTPage, 0, 1,
+		getTPage(timPaddle.mode & 0x3, 0,
+			timPaddle.prect->x, timPaddle.prect->y));
+	addPrim(ot[db][OTLEN - PADDLE_DRAW_LAYER], tileTPage);
+	nextpri += sizeof(DR_TPAGE);
+	
+	FntPrint("%d, %d\n", timPaddle.prect->x, timPaddle.prect->y);
 }
 
 void display(void){
@@ -240,7 +271,7 @@ int main(void){
 		(Vec2sfx16){(1 << 6) / 2, (1 << 6) / 2},
 		2 << 6,
 		(Vec2i){8, 8},
-		255,255,0,
+		128,128,128,
 		1
 	};
 	
@@ -248,8 +279,11 @@ int main(void){
 	paddle = (OBJ_PADDLE){
 		(Vec4i){SCREENXRES/2, SCREENYRES-32, 64, 8},
 		2 << 6,
-		255, 0, 255
+		//255, 0, 255
+		128,128,128
 	};
+	LoadTexture(_binary_res_paddle_tim_start, &timPaddle);
+	LoadTexture(_binary_res_ball_tim_start, &timBall);
 	
     while (1){
         // Clear reversed ordering table.
