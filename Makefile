@@ -14,5 +14,8 @@ NOLIBROOT = ${NOLIBGS}
 TARGET = psx_break
 
 SRCS = main.c \
+res/marquee.tim \
+res/paddle.tim \
+res/ball.tim \
 
 include $(NOLIBROOT)/common.mk 
