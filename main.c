@@ -49,6 +49,9 @@ OBJ_BALL ballArr[BALL_MAX];	// BALLSs to draw.
 #define PADDLE_DRAW_LAYER	3
 OBJ_PADDLE paddle;
 
+// Marquee
+#define MARQUEE_DRAW_LAYER	4
+
 #define XA_SECTOR_OFFSET	4	// Unsure what this is.
 								// 4: simple speed, 8: double speed.
 #define XA_TRACKS	1			// Number of XA tracks.
@@ -114,7 +117,40 @@ void init(void){
 	SpuInit();
 }
 
-void DrawLevel(){}	// TODO
+void DrawLevel(){
+	// Draw Marquee.
+	SPRT* tile1 = (SPRT*) nextpri;
+	setSprt(tile1);
+	setRGB0(tile1, 128, 128, 128);
+	setXY0(tile1, 0, 0);
+	setWH(tile1, 160, 240);
+	setUV0(tile1, 0, 0);
+	setClut(tile1, timMarquee_1.crect->x, timMarquee_1.crect->y);
+	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile1);
+	nextpri += sizeof(SPRT);
+	DR_TPAGE* tile1TPage = (DR_TPAGE*) nextpri;
+	setDrawTPage(tile1TPage, 0, 1,
+		getTPage(timMarquee_1.mode & 0x3, 0,
+			timMarquee_1.prect->x, timMarquee_1.prect->y));
+	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile1TPage);
+	nextpri += sizeof(DR_TPAGE);
+	
+	SPRT* tile2 = (SPRT*) nextpri;
+	setSprt(tile2);
+	setRGB0(tile2, 128, 128, 128);
+	setXY0(tile2, 160, 0);
+	setWH(tile2, 160, 240);
+	setUV0(tile2, 0, 0);
+	setClut(tile2, timMarquee_2.crect->x, timMarquee_2.crect->y);
+	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile2);
+	nextpri += sizeof(SPRT);
+	DR_TPAGE* tile2TPage = (DR_TPAGE*) nextpri;
+	setDrawTPage(tile2TPage, 0, 1,
+		getTPage(timMarquee_2.mode & 0x3, 0,
+			timMarquee_2.prect->x, timMarquee_2.prect->y));
+	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile2TPage);
+	nextpri += sizeof(DR_TPAGE);
+}
 
 void StepBalls(){
 	for(int i = 0; i < BALL_MAX; i++){
@@ -123,9 +159,9 @@ void StepBalls(){
 			int ballX = ballArr[i].position.x >> 12;
 			int ballY = ballArr[i].position.y >> 12;
 			
-			if(ballX < ballArr[i].size.x/2 || ballX > SCREENXRES - ballArr[i].size.x/2)
+			if(ballX < ballArr[i].size.x/2 + 32 || ballX > SCREENXRES - ballArr[i].size.x/2 - 32)
 				ballArr[i].direction.x = -ballArr[i].direction.x;
-			if(ballY < ballArr[i].size.y/2 || ballY > SCREENYRES - ballArr[i].size.y/2)
+			if(ballY < ballArr[i].size.y/2 + 32 || ballY > SCREENYRES - ballArr[i].size.y/2 - 32)
 				ballArr[i].direction.y = -ballArr[i].direction.y;
 			
 			// Collision with paddle.
@@ -277,13 +313,16 @@ int main(void){
 	
 	// Init PADDLE.
 	paddle = (OBJ_PADDLE){
-		(Vec4i){SCREENXRES/2, SCREENYRES-32, 64, 8},
+		(Vec4i){SCREENXRES/2, SCREENYRES-48, 64, 8},
 		2 << 6,
 		//255, 0, 255
 		128,128,128
 	};
 	LoadTexture(_binary_res_paddle_tim_start, &timPaddle);
 	LoadTexture(_binary_res_ball_tim_start, &timBall);
+	//LoadTexture(_binary_res_marquee_tim_start, &timMarquee);
+	LoadTexture(_binary_res_marquee1_tim_start, &timMarquee_1);
+	LoadTexture(_binary_res_marquee2_tim_start, &timMarquee_2);
 	
     while (1){
         // Clear reversed ordering table.
@@ -292,6 +331,9 @@ int main(void){
 		// Poll gamepad.
 		pad = PadRead(0);
 	
+		// Draw level + marquee.
+		DrawLevel();
+		
 		// Step OBJs.
 		StepBalls();
 		StepPaddle(pad);
