@@ -13,6 +13,7 @@
 
 #include "types.h"
 #include "tims.h"
+#include "levels.h"
 
 #define VMODE		0	// Video Mode ; 0: NTSC, 1: PAL
 #define SCREENXRES	320	// Screen width
@@ -23,7 +24,8 @@
 
 #define FONTSIZE	8 * 7	// Text Field Height
 
-#define OTLEN	16	// Length of ordering table.
+#define OTLEN	180	// Length of ordering table.
+					// 16x11 = 176 possible tiles + paddle and 3 balls.
 
 SpuCommonAttr spuSettings;	// SPU attributes.
 
@@ -49,8 +51,11 @@ OBJ_BALL ballArr[BALL_MAX];	// BALLSs to draw.
 #define PADDLE_DRAW_LAYER	3
 OBJ_PADDLE paddle;
 
-// Marquee
-#define MARQUEE_DRAW_LAYER	4
+// Levels
+#define LEVEL_DRAW_LAYER	4
+#define LEVEL_NUM			2
+int levelIndex = 0;
+OBJ_LEVEL levels[LEVEL_NUM];
 
 #define XA_SECTOR_OFFSET	4	// Unsure what this is.
 								// 4: simple speed, 8: double speed.
@@ -119,37 +124,65 @@ void init(void){
 
 void DrawLevel(){
 	// Draw Marquee.
-	SPRT* tile1 = (SPRT*) nextpri;
-	setSprt(tile1);
-	setRGB0(tile1, 128, 128, 128);
-	setXY0(tile1, 0, 0);
-	setWH(tile1, 160, 240);
-	setUV0(tile1, 0, 0);
-	setClut(tile1, timMarquee_1.crect->x, timMarquee_1.crect->y);
-	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile1);
+	// 	Due to textures having a max size of 256x256,
+	//	the marquee has to be split into two SPRTs.
+	SPRT* marLeftSprt = (SPRT*) nextpri;
+	setSprt(marLeftSprt);
+	setRGB0(marLeftSprt, 128, 128, 128);
+	setXY0(marLeftSprt, 0, 0);
+	setWH(marLeftSprt, 160, 240);
+	setUV0(marLeftSprt, 0, 0);
+	setClut(marLeftSprt, timMarquee_1.crect->x, timMarquee_1.crect->y);
+	addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER+1], marLeftSprt);
 	nextpri += sizeof(SPRT);
-	DR_TPAGE* tile1TPage = (DR_TPAGE*) nextpri;
-	setDrawTPage(tile1TPage, 0, 1,
+	DR_TPAGE* marLeftSprtTPage = (DR_TPAGE*) nextpri;
+	setDrawTPage(marLeftSprtTPage, 0, 1,
 		getTPage(timMarquee_1.mode & 0x3, 0,
 			timMarquee_1.prect->x, timMarquee_1.prect->y));
-	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile1TPage);
+	addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER+1], marLeftSprtTPage);
 	nextpri += sizeof(DR_TPAGE);
 	
-	SPRT* tile2 = (SPRT*) nextpri;
-	setSprt(tile2);
-	setRGB0(tile2, 128, 128, 128);
-	setXY0(tile2, 160, 0);
-	setWH(tile2, 160, 240);
-	setUV0(tile2, 0, 0);
-	setClut(tile2, timMarquee_2.crect->x, timMarquee_2.crect->y);
-	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile2);
+	SPRT* marRightSprt = (SPRT*) nextpri;
+	setSprt(marRightSprt);
+	setRGB0(marRightSprt, 128, 128, 128);
+	setXY0(marRightSprt, 160, 0);
+	setWH(marRightSprt, 160, 240);
+	setUV0(marRightSprt, 0, 0);
+	setClut(marRightSprt, timMarquee_2.crect->x, timMarquee_2.crect->y);
+	addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER+1], marRightSprt);
 	nextpri += sizeof(SPRT);
-	DR_TPAGE* tile2TPage = (DR_TPAGE*) nextpri;
-	setDrawTPage(tile2TPage, 0, 1,
+	DR_TPAGE* marRightSprtTPage = (DR_TPAGE*) nextpri;
+	setDrawTPage(marRightSprtTPage, 0, 1,
 		getTPage(timMarquee_2.mode & 0x3, 0,
 			timMarquee_2.prect->x, timMarquee_2.prect->y));
-	addPrim(ot[db][OTLEN - MARQUEE_DRAW_LAYER], tile2TPage);
+	addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER+1], marRightSprtTPage);
 	nextpri += sizeof(DR_TPAGE);
+	
+	// Draw tiles.
+	for(int i = 0; i < LEVEL_HGT*LEVEL_WID; i++){
+		if(levels[levelIndex].tiles[i] != 0){
+			//SPRT* tile = (SPRT*) nextpri;
+			//setSprt(tile);
+			TILE* tile = (TILE*) nextpri;
+			setTile(tile);
+			setRGB0(tile, 0, 255, 0);
+			setXY0(tile, LEVEL_OFFSET_X + ((i % LEVEL_WID) * LEVEL_TILE_SIZE), LEVEL_OFFSET_Y + ((i / LEVEL_WID) * LEVEL_TILE_SIZE));
+			setWH(tile, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE);
+			//setUV0(tile, 0, 0);
+			//setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
+			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tile);
+			nextpri += sizeof(TILE);
+
+			/*
+			DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
+			setDrawTPage(tileTPage, 0, 1,
+				getTPage(timPaddle.mode & 0x3, 0,
+					timPaddle.prect->x, timPaddle.prect->y));
+			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tileTPage);
+			nextpri += sizeof(DR_TPAGE);
+			*/
+		}
+	}
 }
 
 void StepBalls(){
@@ -177,6 +210,9 @@ void StepBalls(){
 				//	Ball direction should be based on how the paddle is currently moving.
 				ballArr[i].direction.y = -ballArr[i].direction.y;
 			}
+			
+			// Collision with tiles.
+			//	TODO: Have ball only check the 9 tiles surrounding it.
 			
 			ballArr[i].position.x += (ballArr[i].direction.x * ballArr[i].speed);
 			ballArr[i].position.y += (ballArr[i].direction.y * ballArr[i].speed);
@@ -214,12 +250,10 @@ void StepPaddle(int pad){
 	// TODO:
 	//	Transition to using fixed point for position.
 	//	If speed is below 1 then it will add nothing to position.
-	if(pad & PADLleft && paddle.rect.x - paddle.rect.w/2 > 0)			paddle.rect.x -= (paddle.speed >> 6);
-	if(pad & PADLright && paddle.rect.x + paddle.rect.w/2 < SCREENXRES)	paddle.rect.x += (paddle.speed >> 6);
+	if(pad & PADLleft && paddle.rect.x - paddle.rect.w/2 - 32 > 0)			paddle.rect.x -= (paddle.speed >> 6);
+	if(pad & PADLright && paddle.rect.x + paddle.rect.w/2 + 32 < SCREENXRES)	paddle.rect.x += (paddle.speed >> 6);
 	
 	// Draw PADDLE.
-	//TILE* tile = (TILE*) nextpri;
-	//setTile(tile);
 	SPRT* tile = (SPRT*) nextpri;
 	setSprt(tile);
 	setRGB0(tile, paddle.r, paddle.g, paddle.b);
@@ -228,7 +262,6 @@ void StepPaddle(int pad){
 	setUV0(tile, 0, 0);
 	setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
 	addPrim(ot[db][OTLEN - PADDLE_DRAW_LAYER], tile);
-	//nextpri += sizeof(TILE);
 	nextpri += sizeof(SPRT);
 	
 	DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
@@ -318,6 +351,11 @@ int main(void){
 		//255, 0, 255
 		128,128,128
 	};
+	
+	// Init Levels.
+	InitLevels(levels, LEVEL_NUM);
+	
+	// Load textures.
 	LoadTexture(_binary_res_paddle_tim_start, &timPaddle);
 	LoadTexture(_binary_res_ball_tim_start, &timBall);
 	//LoadTexture(_binary_res_marquee_tim_start, &timMarquee);
@@ -338,6 +376,7 @@ int main(void){
 		StepBalls();
 		StepPaddle(pad);
 		
+		FntPrint("%d\n", LEVEL_HGT*LEVEL_WID);
 		FntFlush(-1);	// Draw print stream, clear print buffer.
 		display();
     }
