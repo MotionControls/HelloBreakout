@@ -23,14 +23,16 @@ typedef struct{			// Ideal for positions.
 }Vec2ufx32;
 
 // OBJs
-#define LEVEL_TILESIZE	16
-#define LEVEL_WID		20
-#define LEVEL_HGT		16
+#define LEVEL_TILE_SIZE	16
+#define LEVEL_WID		(320/LEVEL_TILE_SIZE - 4)
+#define LEVEL_HGT		(240/LEVEL_TILE_SIZE - 4)
+#define LEVEL_OFFSET_X	32
+#define LEVEL_OFFSET_Y	32
 
 typedef struct{
-	int tiles[LEVEL_HGT][LEVEL_WID];
-	TIM_IMAGE timImg;
-	unsigned long* timFile;
+	//TIM_IMAGE timImg;
+	//unsigned long* timFile;
+	int tiles[LEVEL_HGT*LEVEL_WID];
 }OBJ_LEVEL;
 
 typedef struct{
