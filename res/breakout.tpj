@@ -1,16 +1,6 @@
 <tim_project>
     <properties buffer_res="2" buffer_order="0"/>
     <tim_group name="global">
-        <tim file="marquee.tim" source="marquee.png">
-            <import_parameters>
-                <target_bpp>8</target_bpp>
-                <dithering>0</dithering>
-                <quantize_mode>0</quantize_mode>
-                <set_color_stp>0</set_color_stp>
-                <set_black_stp>0</set_black_stp>
-                <transparency_mode>0</transparency_mode>
-            </import_parameters>
-        </tim>
         <tim file="paddle.tim" source="paddle.png">
             <import_parameters>
                 <target_bpp>8</target_bpp>
@@ -24,6 +14,26 @@
         <tim file="ball.tim" source="ball.png">
             <import_parameters>
                 <target_bpp>8</target_bpp>
+                <dithering>0</dithering>
+                <quantize_mode>0</quantize_mode>
+                <set_color_stp>0</set_color_stp>
+                <set_black_stp>0</set_black_stp>
+                <transparency_mode>0</transparency_mode>
+            </import_parameters>
+        </tim>
+        <tim file="marquee1.tim" source="marquee-1.png">
+            <import_parameters>
+                <target_bpp>4</target_bpp>
+                <dithering>0</dithering>
+                <quantize_mode>0</quantize_mode>
+                <set_color_stp>0</set_color_stp>
+                <set_black_stp>0</set_black_stp>
+                <transparency_mode>0</transparency_mode>
+            </import_parameters>
+        </tim>
+        <tim file="marquee2.tim" source="marquee-2.png">
+            <import_parameters>
+                <target_bpp>4</target_bpp>
                 <dithering>0</dithering>
                 <quantize_mode>0</quantize_mode>
                 <set_color_stp>0</set_color_stp>

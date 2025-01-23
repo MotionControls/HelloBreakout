@@ -15,6 +15,8 @@ TARGET = psx_break
 
 SRCS = main.c \
 res/marquee.tim \
+res/marquee1.tim \
+res/marquee2.tim \
 res/paddle.tim \
 res/ball.tim \
 
