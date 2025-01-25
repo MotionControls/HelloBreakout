@@ -10,7 +10,9 @@ void InitLevels(OBJ_LEVEL* arr, int length){
 			arr[i].tiles[j] = 0;
 	}
 	
-	arr[0].tiles[0] = 1;
+	//arr[0].tiles[0] = 1;
+	for(int i = 0; i < 16; i++)
+		arr[0].tiles[i] = 1;
 }
 
 #endif
