@@ -191,16 +191,17 @@ void StepBalls(){
 			// Collision with screen borders.
 			int ballX = ballArr[i].position.x >> 12;
 			int ballY = ballArr[i].position.y >> 12;
+			int nextX = ballArr[i].position.x + ballArr[i].speed >> 12;
+			int nextY = ballArr[i].position.y + ballArr[i].speed >> 12;
 			
-			if(ballX < ballArr[i].size.x/2 + 32 || ballX > SCREENXRES - ballArr[i].size.x/2 - 32)
+			if(nextX < ballArr[i].size.x/2 + 32 || nextX > SCREENXRES - ballArr[i].size.x/2 - 32)
 				ballArr[i].direction.x = -ballArr[i].direction.x;
-			if(ballY < ballArr[i].size.y/2 + 32 || ballY > SCREENYRES - ballArr[i].size.y/2 - 32)
+			if(nextY < ballArr[i].size.y/2 + 32 || nextY > SCREENYRES - ballArr[i].size.y/2 - 32)
 				ballArr[i].direction.y = -ballArr[i].direction.y;
 			
 			// Collision with paddle.
-			if(ballX > paddle.rect.x - paddle.rect.w/2 && ballX < paddle.rect.x + paddle.rect.w/2 &&
-				ballY > paddle.rect.y - paddle.rect.h/2 && ballY < paddle.rect.y + paddle.rect.h/2){
-				
+			if(nextX < paddle.rect.x + paddle.rect.w && nextX + ballArr[i].size.x > paddle.rect.x &&
+				nextY < paddle.rect.y + paddle.rect.h && nextY + ballArr[i].size.y > paddle.rect.y){
 				Vec2sfx16 dirToPaddle = (Vec2sfx16){
 					(paddle.rect.x - (paddle.rect.w/2) << 12) - ballArr[i].position.x,
 					(paddle.rect.y - (paddle.rect.h/2) << 12) - ballArr[i].position.y
@@ -212,7 +213,16 @@ void StepBalls(){
 			}
 			
 			// Collision with tiles.
-			//	TODO: Have ball only check the 9 tiles surrounding it.
+			//	TODO: This is bad and should be rewritten.
+			int tx = nextX / LEVEL_TILE_SIZE - 2;
+			int ty = nextY / LEVEL_TILE_SIZE - 2;
+			FntPrint("%d, %d\n", nextX, nextY);
+			FntPrint("%d, %d ; %d\n", tx, ty, tx+(ty*LEVEL_WID));
+			
+			/*
+				x1 < x2 + w2 && x1 + w1 > x2 &&
+				y1 < y2 + h2 && y1 + h1 > y2
+			*/
 			
 			ballArr[i].position.x += (ballArr[i].direction.x * ballArr[i].speed);
 			ballArr[i].position.y += (ballArr[i].direction.y * ballArr[i].speed);
@@ -337,7 +347,7 @@ int main(void){
 	// Init BALLs.
 	ballArr[0] = (OBJ_BALL){
 		(Vec2ufx32){SCREENXRES/2 << 12, SCREENYRES/2 << 12},
-		(Vec2sfx16){(1 << 6) / 2, (1 << 6) / 2},
+		(Vec2sfx16){-((1 << 6) / 2), -((1 << 6) / 2)},
 		2 << 6,
 		(Vec2i){8, 8},
 		128,128,128,
