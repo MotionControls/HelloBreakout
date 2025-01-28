@@ -10,6 +10,7 @@
 #include <libgpu.h>
 #include <libcd.h>
 #include <libspu.h>
+#include <libmath.h>
 
 #include "types.h"
 #include "tims.h"
@@ -122,6 +123,16 @@ void init(void){
 	SpuInit();
 }
 
+int CheckOverlap(Vec4i r1, Vec4i r2){
+	if(r1.x < r2.x+r2.w && r1.x+r1.w >= r2.x &&
+		r1.y < r2.y+r2.h && r1.y+r1.h >= r2.y){
+		
+		return 1;
+	}
+	
+	return 0;
+}
+
 void DrawLevel(){
 	// Draw Marquee.
 	// 	Due to textures having a max size of 256x256,
@@ -172,7 +183,7 @@ void DrawLevel(){
 			//setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
 			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tile);
 			nextpri += sizeof(TILE);
-
+			
 			/*
 			DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
 			setDrawTPage(tileTPage, 0, 1,
@@ -191,57 +202,87 @@ void StepBalls(){
 			// Collision with screen borders.
 			int ballX = ballArr[i].position.x >> 12;
 			int ballY = ballArr[i].position.y >> 12;
-			int nextX = ballArr[i].position.x + ballArr[i].speed >> 12;
-			int nextY = ballArr[i].position.y + ballArr[i].speed >> 12;
+			int nextX = ballArr[i].position.x + (ballArr[i].speed * ballArr[i].direction.x) >> 12;
+			int nextY = ballArr[i].position.y + (ballArr[i].speed * ballArr[i].direction.y) >> 12;
 			
-			if(nextX < ballArr[i].size.x/2 + 32 || nextX > SCREENXRES - ballArr[i].size.x/2 - 32)
+			if(nextX < 32 || nextX > SCREENXRES - ballArr[i].size.x - 32)
 				ballArr[i].direction.x = -ballArr[i].direction.x;
-			if(nextY < ballArr[i].size.y/2 + 32 || nextY > SCREENYRES - ballArr[i].size.y/2 - 32)
+			if(nextY < 32 || nextY > SCREENYRES - ballArr[i].size.y - 32)
 				ballArr[i].direction.y = -ballArr[i].direction.y;
 			
 			// Collision with paddle.
 			if(nextX < paddle.rect.x + paddle.rect.w && nextX + ballArr[i].size.x > paddle.rect.x &&
 				nextY < paddle.rect.y + paddle.rect.h && nextY + ballArr[i].size.y > paddle.rect.y){
-				Vec2sfx16 dirToPaddle = (Vec2sfx16){
-					(paddle.rect.x - (paddle.rect.w/2) << 12) - ballArr[i].position.x,
-					(paddle.rect.y - (paddle.rect.h/2) << 12) - ballArr[i].position.y
-				};
 				
 				// TODO:
 				//	Ball direction should be based on how the paddle is currently moving.
+				if(nextX+(ballArr[i].size.x/2) < paddle.rect.x+(paddle.rect.w/2))
+					ballArr[i].direction.x = -((1 << 6) / 2);
+				else
+					ballArr[i].direction.x = ((1 << 6) / 2);
 				ballArr[i].direction.y = -ballArr[i].direction.y;
 			}
 			
 			// Collision with tiles.
 			//	TODO: This is bad and should be rewritten.
-			int tx = nextX / LEVEL_TILE_SIZE - 2;
-			int ty = nextY / LEVEL_TILE_SIZE - 2;
 			FntPrint("%d, %d\n", nextX, nextY);
-			FntPrint("%d, %d ; %d\n", tx, ty, tx+(ty*LEVEL_WID));
 			
-			/*
-				x1 < x2 + w2 && x1 + w1 > x2 &&
-				y1 < y2 + h2 && y1 + h1 > y2
-			*/
+			for(int j = 0; j < LEVEL_HGT*LEVEL_WID; j++){
+				int tileX = (j%LEVEL_WID)*LEVEL_TILE_SIZE+LEVEL_OFFSET_X;
+				int tileY = (j/LEVEL_WID)*LEVEL_TILE_SIZE+LEVEL_OFFSET_Y;
+				int endLoop = 0;
+				
+				if(levels[levelIndex].tiles[j] != 0){
+					// Move X.
+					if(CheckOverlap((Vec4i){tileX, tileY, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE},
+						(Vec4i){nextX, ballY, ballArr[i].size.x, ballArr[i].size.y})){
+						ballArr[i].direction.x = -ballArr[i].direction.x;
+						endLoop = 1;
+					}
+					
+					if(CheckOverlap((Vec4i){tileX, tileY, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE},
+						(Vec4i){ballX, nextY, ballArr[i].size.x, ballArr[i].size.y})){
+						ballArr[i].direction.y = -ballArr[i].direction.y;
+						endLoop = 1;
+					}
+					
+					if(endLoop) j = LEVEL_HGT*LEVEL_WID;
+				}
+			}
 			
 			ballArr[i].position.x += (ballArr[i].direction.x * ballArr[i].speed);
 			ballArr[i].position.y += (ballArr[i].direction.y * ballArr[i].speed);
 			
 			// Draw BALL.
-			//TILE* tile = (TILE*) nextpri;
-			//setTile(tile);
 			SPRT* tile = (SPRT*) nextpri;
 			setSprt(tile);
 			setXY0(tile,
-				(ballArr[i].position.x >> 12) - ballArr[i].size.x/2,
-				(ballArr[i].position.y >> 12) - ballArr[i].size.y/2);
+				(ballArr[i].position.x >> 12),// - ballArr[i].size.x/2,
+				(ballArr[i].position.y >> 12));// - ballArr[i].size.y/2);
 			setWH(tile, ballArr[i].size.x, ballArr[i].size.y);
 			setRGB0(tile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
 			setClut(tile, timBall.crect->x, timBall.crect->y);
 			setUV0(tile, 0, 0);
 			addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tile);
-			//nextpri += sizeof(TILE);
 			nextpri += sizeof(SPRT);
+			
+			// Draw tiles being checked.
+			/*
+			for(int ix = xLow; ix < xHigh; ix++){
+				for(int iy = yLow; iy < yHigh; iy++){
+					TILE* debugTile = (TILE*) nextpri;
+					setTile(debugTile);
+					setXY0(debugTile, (ix+2)*LEVEL_TILE_SIZE, (iy+2)*LEVEL_TILE_SIZE);
+					setWH(debugTile, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE);
+					if(levels[levelIndex].tiles[ix+(iy*LEVEL_WID)] != 0)
+						setRGB0(debugTile, 255, 0, 0);
+					else
+						setRGB0(debugTile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
+					addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], debugTile);
+					nextpri += sizeof(SPRT);
+				}
+			}
+			*/
 		}
 	}
 	
@@ -251,8 +292,6 @@ void StepBalls(){
 			timBall.prect->x, timBall.prect->y));
 	addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tileTPage);
 	nextpri += sizeof(DR_TPAGE);
-	
-	FntPrint("%d, %d\n", timBall.prect->x, timBall.prect->y);
 }
 
 void StepPaddle(int pad){
@@ -260,14 +299,16 @@ void StepPaddle(int pad){
 	// TODO:
 	//	Transition to using fixed point for position.
 	//	If speed is below 1 then it will add nothing to position.
-	if(pad & PADLleft && paddle.rect.x - paddle.rect.w/2 - 32 > 0)			paddle.rect.x -= (paddle.speed >> 6);
-	if(pad & PADLright && paddle.rect.x + paddle.rect.w/2 + 32 < SCREENXRES)	paddle.rect.x += (paddle.speed >> 6);
+	if(pad & PADLleft && paddle.rect.x - 32 > 0)							paddle.rect.x -= (paddle.speed >> 6);
+	if(pad & PADLright && paddle.rect.x + paddle.rect.w + 32 < SCREENXRES)	paddle.rect.x += (paddle.speed >> 6);
 	
 	// Draw PADDLE.
 	SPRT* tile = (SPRT*) nextpri;
 	setSprt(tile);
 	setRGB0(tile, paddle.r, paddle.g, paddle.b);
-	setXY0(tile, paddle.rect.x - paddle.rect.w/2, paddle.rect.y - paddle.rect.h/2);
+	setXY0(tile,
+		paddle.rect.x,// - paddle.rect.w/2,
+		paddle.rect.y);// - paddle.rect.h/2);
 	setWH(tile, paddle.rect.w, paddle.rect.h);
 	setUV0(tile, 0, 0);
 	setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
@@ -280,8 +321,6 @@ void StepPaddle(int pad){
 			timPaddle.prect->x, timPaddle.prect->y));
 	addPrim(ot[db][OTLEN - PADDLE_DRAW_LAYER], tileTPage);
 	nextpri += sizeof(DR_TPAGE);
-	
-	FntPrint("%d, %d\n", timPaddle.prect->x, timPaddle.prect->y);
 }
 
 void display(void){
@@ -386,7 +425,6 @@ int main(void){
 		StepBalls();
 		StepPaddle(pad);
 		
-		FntPrint("%d\n", LEVEL_HGT*LEVEL_WID);
 		FntFlush(-1);	// Draw print stream, clear print buffer.
 		display();
     }
