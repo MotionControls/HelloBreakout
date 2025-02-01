@@ -29,6 +29,11 @@ typedef struct{			// Ideal for positions.
 #define LEVEL_OFFSET_X	32
 #define LEVEL_OFFSET_Y	32
 
+#define TILE_TYPE_NONE		0
+#define TILE_TYPE_NORMAL	1
+#define TILE_TYPE_SPEED		2
+#define TILE_TYPE_MULTI		3
+
 typedef struct{
 	//TIM_IMAGE timImg;
 	//unsigned long* timFile;

@@ -134,6 +134,30 @@ int CheckOverlap(Vec4i r1, Vec4i r2){
 }
 
 void DrawLevel(){
+	// Draw tiles.
+	for(int i = 0; i < LEVEL_HGT*LEVEL_WID; i++){
+		if(levels[levelIndex].tiles[i] != 0){
+			SPRT* tile = (SPRT*) nextpri;
+			setSprt(tile);
+			//TILE* tile = (TILE*) nextpri;
+			//setTile(tile);
+			setRGB0(tile, 128, 128, 128);
+			setXY0(tile, LEVEL_OFFSET_X + ((i % LEVEL_WID) * LEVEL_TILE_SIZE), LEVEL_OFFSET_Y + ((i / LEVEL_WID) * LEVEL_TILE_SIZE));
+			setWH(tile, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE);
+			setUV0(tile, (levels[levelIndex].tiles[i]-1)*(LEVEL_TILE_SIZE), 0);
+			setClut(tile, timTiles.crect->x, timTiles.crect->y);
+			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tile);
+			nextpri += sizeof(SPRT);
+			
+			DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
+			setDrawTPage(tileTPage, 0, 1,
+				getTPage(timTiles.mode & 0x3, 0,
+					timTiles.prect->x, timTiles.prect->y));
+			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tileTPage);
+			nextpri += sizeof(DR_TPAGE);
+		}
+	}
+	
 	// Draw Marquee.
 	// 	Due to textures having a max size of 256x256,
 	//	the marquee has to be split into two SPRTs.
@@ -164,36 +188,10 @@ void DrawLevel(){
 	nextpri += sizeof(SPRT);
 	DR_TPAGE* marRightSprtTPage = (DR_TPAGE*) nextpri;
 	setDrawTPage(marRightSprtTPage, 0, 1,
-		getTPage(timMarquee_2.mode & 0x3, 0,
+		getTPage(timMarquee_2.mode & 0x3, 1,
 			timMarquee_2.prect->x, timMarquee_2.prect->y));
 	addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER+1], marRightSprtTPage);
 	nextpri += sizeof(DR_TPAGE);
-	
-	// Draw tiles.
-	for(int i = 0; i < LEVEL_HGT*LEVEL_WID; i++){
-		if(levels[levelIndex].tiles[i] != 0){
-			//SPRT* tile = (SPRT*) nextpri;
-			//setSprt(tile);
-			TILE* tile = (TILE*) nextpri;
-			setTile(tile);
-			setRGB0(tile, 0, 255, 0);
-			setXY0(tile, LEVEL_OFFSET_X + ((i % LEVEL_WID) * LEVEL_TILE_SIZE), LEVEL_OFFSET_Y + ((i / LEVEL_WID) * LEVEL_TILE_SIZE));
-			setWH(tile, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE);
-			//setUV0(tile, 0, 0);
-			//setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
-			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tile);
-			nextpri += sizeof(TILE);
-			
-			/*
-			DR_TPAGE* tileTPage = (DR_TPAGE*) nextpri;
-			setDrawTPage(tileTPage, 0, 1,
-				getTPage(timPaddle.mode & 0x3, 0,
-					timPaddle.prect->x, timPaddle.prect->y));
-			addPrim(ot[db][OTLEN - LEVEL_DRAW_LAYER], tileTPage);
-			nextpri += sizeof(DR_TPAGE);
-			*/
-		}
-	}
 }
 
 void StepBalls(){
@@ -230,23 +228,27 @@ void StepBalls(){
 			for(int j = 0; j < LEVEL_HGT*LEVEL_WID; j++){
 				int tileX = (j%LEVEL_WID)*LEVEL_TILE_SIZE+LEVEL_OFFSET_X;
 				int tileY = (j/LEVEL_WID)*LEVEL_TILE_SIZE+LEVEL_OFFSET_Y;
-				int endLoop = 0;
 				
 				if(levels[levelIndex].tiles[j] != 0){
-					// Move X.
 					if(CheckOverlap((Vec4i){tileX, tileY, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE},
 						(Vec4i){nextX, ballY, ballArr[i].size.x, ballArr[i].size.y})){
+						if(levels[levelIndex].tiles[j] == TILE_TYPE_SPEED)
+							ballArr[i].speed += (1 << 6) / 2;
+						levels[levelIndex].tiles[j] = 0;
+						
 						ballArr[i].direction.x = -ballArr[i].direction.x;
-						endLoop = 1;
+						j = LEVEL_HGT*LEVEL_WID;
 					}
 					
 					if(CheckOverlap((Vec4i){tileX, tileY, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE},
 						(Vec4i){ballX, nextY, ballArr[i].size.x, ballArr[i].size.y})){
+						if(levels[levelIndex].tiles[j] == TILE_TYPE_SPEED)
+							ballArr[i].speed += (1 << 6) / 2;
+						levels[levelIndex].tiles[j] = 0;
+						
 						ballArr[i].direction.y = -ballArr[i].direction.y;
-						endLoop = 1;
+						j = LEVEL_HGT*LEVEL_WID;
 					}
-					
-					if(endLoop) j = LEVEL_HGT*LEVEL_WID;
 				}
 			}
 			
@@ -257,32 +259,14 @@ void StepBalls(){
 			SPRT* tile = (SPRT*) nextpri;
 			setSprt(tile);
 			setXY0(tile,
-				(ballArr[i].position.x >> 12),// - ballArr[i].size.x/2,
-				(ballArr[i].position.y >> 12));// - ballArr[i].size.y/2);
+				(ballArr[i].position.x >> 12),
+				(ballArr[i].position.y >> 12));
 			setWH(tile, ballArr[i].size.x, ballArr[i].size.y);
 			setRGB0(tile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
 			setClut(tile, timBall.crect->x, timBall.crect->y);
 			setUV0(tile, 0, 0);
 			addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], tile);
 			nextpri += sizeof(SPRT);
-			
-			// Draw tiles being checked.
-			/*
-			for(int ix = xLow; ix < xHigh; ix++){
-				for(int iy = yLow; iy < yHigh; iy++){
-					TILE* debugTile = (TILE*) nextpri;
-					setTile(debugTile);
-					setXY0(debugTile, (ix+2)*LEVEL_TILE_SIZE, (iy+2)*LEVEL_TILE_SIZE);
-					setWH(debugTile, LEVEL_TILE_SIZE, LEVEL_TILE_SIZE);
-					if(levels[levelIndex].tiles[ix+(iy*LEVEL_WID)] != 0)
-						setRGB0(debugTile, 255, 0, 0);
-					else
-						setRGB0(debugTile, ballArr[i].r, ballArr[i].g, ballArr[i].b);
-					addPrim(ot[db][OTLEN - BALL_DRAW_LAYER], debugTile);
-					nextpri += sizeof(SPRT);
-				}
-			}
-			*/
 		}
 	}
 	
@@ -307,8 +291,8 @@ void StepPaddle(int pad){
 	setSprt(tile);
 	setRGB0(tile, paddle.r, paddle.g, paddle.b);
 	setXY0(tile,
-		paddle.rect.x,// - paddle.rect.w/2,
-		paddle.rect.y);// - paddle.rect.h/2);
+		paddle.rect.x,
+		paddle.rect.y);
 	setWH(tile, paddle.rect.w, paddle.rect.h);
 	setUV0(tile, 0, 0);
 	setClut(tile, timPaddle.crect->x, timPaddle.crect->y);
@@ -410,6 +394,7 @@ int main(void){
 	//LoadTexture(_binary_res_marquee_tim_start, &timMarquee);
 	LoadTexture(_binary_res_marquee1_tim_start, &timMarquee_1);
 	LoadTexture(_binary_res_marquee2_tim_start, &timMarquee_2);
+	LoadTexture(_binary_res_tiles_tim_start, &timTiles);
 	
     while (1){
         // Clear reversed ordering table.
