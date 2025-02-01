@@ -19,5 +19,6 @@ res/marquee1.tim \
 res/marquee2.tim \
 res/paddle.tim \
 res/ball.tim \
+res/tiles.tim \
 
 include $(NOLIBROOT)/common.mk 
