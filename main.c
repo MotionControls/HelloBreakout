@@ -123,6 +123,23 @@ void init(void){
 	SpuInit();
 }
 
+int FindNextBallIndex(){
+	for(int i = 0; i < BALL_MAX; i++){
+		if(ballArr[i].active == 0) return i;
+	}
+}
+
+void InitBall(int index, int x, int y, unsigned short speed){
+	ballArr[index] = (OBJ_BALL){
+		(Vec2ufx32){x << 12, y << 12},
+		(Vec2sfx16){(1<<6)/2, (1<<6)/2},
+		speed,
+		(Vec2i){8,8},
+		128,128,128,
+		1
+	};
+}
+
 int CheckOverlap(Vec4i r1, Vec4i r2){
 	if(r1.x < r2.x+r2.w && r1.x+r1.w >= r2.x &&
 		r1.y < r2.y+r2.h && r1.y+r1.h >= r2.y){
@@ -234,6 +251,13 @@ void StepBalls(){
 						(Vec4i){nextX, ballY, ballArr[i].size.x, ballArr[i].size.y})){
 						if(levels[levelIndex].tiles[j] == TILE_TYPE_SPEED)
 							ballArr[i].speed += (1 << 6) / 2;
+						if(levels[levelIndex].tiles[j] == TILE_TYPE_MULTI){
+							int nextIndex = FindNextBallIndex();
+							InitBall(nextIndex, ballX, ballY, ballArr[i].speed);
+							ballArr[nextIndex].direction.x = -ballArr[i].direction.x;
+							ballArr[nextIndex].direction.y = -ballArr[i].direction.y;
+						}
+							
 						levels[levelIndex].tiles[j] = 0;
 						
 						ballArr[i].direction.x = -ballArr[i].direction.x;
@@ -244,6 +268,12 @@ void StepBalls(){
 						(Vec4i){ballX, nextY, ballArr[i].size.x, ballArr[i].size.y})){
 						if(levels[levelIndex].tiles[j] == TILE_TYPE_SPEED)
 							ballArr[i].speed += (1 << 6) / 2;
+						if(levels[levelIndex].tiles[j] == TILE_TYPE_MULTI){
+							int nextIndex = FindNextBallIndex();
+							InitBall(nextIndex, ballX, ballY, ballArr[i].speed);
+							ballArr[nextIndex].direction.x = -ballArr[i].direction.x;
+							ballArr[nextIndex].direction.y = -ballArr[i].direction.y;
+						}
 						levels[levelIndex].tiles[j] = 0;
 						
 						ballArr[i].direction.y = -ballArr[i].direction.y;
