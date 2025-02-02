@@ -15,6 +15,7 @@
 #include "types.h"
 #include "tims.h"
 #include "levels.h"
+#include "LUT.h"
 
 #define VMODE		0	// Video Mode ; 0: NTSC, 1: PAL
 #define SCREENXRES	320	// Screen width
@@ -398,14 +399,8 @@ int main(void){
 	PadInit(0);
 	
 	// Init BALLs.
-	ballArr[0] = (OBJ_BALL){
-		(Vec2ufx32){SCREENXRES/2 << 12, SCREENYRES/2 << 12},
-		(Vec2sfx16){-((1 << 6) / 2), -((1 << 6) / 2)},
-		2 << 6,
-		(Vec2i){8, 8},
-		128,128,128,
-		1
-	};
+	InitBall(0, SCREENXRES/2, SCREENYRES-64, 1<<6);
+	ballArr[0].direction = (Vec2sfx16){COSLUT[90], -SINLUT[90]};
 	
 	// Init PADDLE.
 	paddle = (OBJ_PADDLE){
